@@ -1,8 +1,8 @@
-#define RPIN 9
-#define GPIN 10
-#define BPIN 11
-#define BUTTON 5
-#define ADJUSTMENT A5
+#define RPIN 2
+#define GPIN 3
+#define BPIN 4
+#define BUTTON 22
+#define ADJUSTMENT 55
 
 int counter = 0;
 
@@ -52,7 +52,8 @@ void loop() {
 
   evaluateColors();
   updateLights();
-  delay(100* adjustmentRange);
+  //delay(100* adjustmentRange);
+  delay(10);
 
 }
 
