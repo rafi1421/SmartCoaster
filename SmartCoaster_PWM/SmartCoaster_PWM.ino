@@ -1,3 +1,5 @@
+#define DEBUG_serial true		// serial print messages
+
 #define RPIN 2
 #define GPIN 3
 #define BPIN 4
@@ -7,18 +9,23 @@
 int counter = 0;
 
 int red = 255;
-int green =  255;
+int green = 255;
 int blue = 255;
 
 int adjustmentValue = 0;
 int buttonValue = 0;
 bool buttonDown = false;
 
+int thresh_min=100;
+int thresh_mid=150;
+int thresh_max=200;
 
 void setup() {
 
-  Serial.begin(9600);
-
+  #if DEBUG_serial
+	Serial.begin(9600);
+  #endif // DEBUG
+  
   pinMode(RPIN, OUTPUT);
   pinMode(GPIN, OUTPUT);
   pinMode(BPIN, OUTPUT);
@@ -33,10 +40,21 @@ void loop() {
   adjustmentValue = analogRead(ADJUSTMENT);
   int adjustmentRange = map(adjustmentValue, 0, 1024, 1, 25);
 
-  Serial.print(adjustmentValue);
-  Serial.print(", ");
-  Serial.println(adjustmentRange);
-
+#if DEBUG_serial
+  Serial.print("ButtonValue: ");
+  Serial.print(buttonValue);
+  Serial.print(", Button: ");
+  Serial.print(buttonDown);  
+  Serial.print(", Counter: ");
+  Serial.print(counter);
+  Serial.print(", red: ");
+  Serial.print(red);
+  Serial.print(", green: ");
+  Serial.print(green);
+  Serial.print(", blue: ");
+  Serial.println(blue);
+#endif
+  
   if (buttonValue == LOW && buttonDown == false) {
     counter = 0;
     buttonDown = true;
@@ -53,38 +71,32 @@ void loop() {
   evaluateColors();
   updateLights();
   //delay(100* adjustmentRange);
-  delay(10);
+  delay(1);
 
 }
 
+
 void evaluateColors() {
 
-  if (buttonDown == true && counter >= 0 && counter <= 510) {
-    red = counter * 0.5;
-    green = counter * 0.5;
-    blue = counter * 0.5;
-  } else if (buttonDown == true && counter > 510 && counter <= 1020) {
-    red = 255 - (counter * 0.25);
-    green = 255 - (counter * 0.25);
-    blue = 255;
-  } else if (buttonDown == true && counter > 1020) {
+  if (buttonDown == true && counter >= thresh_min && counter <= thresh_mid) {
     red = 0;
-    green = 120 * (counter % 2);
-    blue = 255 * (counter % 2);
+    green = 0;
+    blue = counter-thresh_min;
+  } else if (buttonDown == true && counter > thresh_mid && counter <= thresh_max) {
+    red = counter-thresh_mid;
+    green = 0;
+    blue = thresh_max-counter;
+  } else if (buttonDown == true && counter > thresh_max && counter <= thresh_max+50) {
+  } else if (buttonDown == true && counter > thresh_max+50) {
+    red = 0;
+    green = 0;
+    blue = 0;
   }
 
-  if (buttonDown == false && counter >= 0 && counter <= 255) {
-    red = counter;
+  if (buttonDown == false) {
+    red = 0;
     green = 0;
-    blue = counter * 0.25;
-  } else if (buttonDown == false && counter >= 256 && counter <= 510) {
-    red = 255 - (counter - 255);
-    green = 0;
-    blue = (255 - (counter - 255)) * 0.25;
-  } else if (buttonDown == false && counter > 510) {
-    red = 255 * (counter % 2);
-    green = 0;
-    blue = 50 * (counter % 2);
+    blue = 0;
   }
 
 }
