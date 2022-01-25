@@ -1,5 +1,5 @@
 
-#define Board_DigiSpark false
+#define Board_DigiSpark true
 
 #if Board_DigiSpark
   //DigiSpark Pins
@@ -50,6 +50,11 @@ void setup() {
 
   pinMode(BUTTON, INPUT_PULLUP);
 
+  // PowerOn glow for fun
+  fadeOn(BPIN,50);
+  fadeOn(GPIN,50);
+  fadeOut(BPIN,50);
+  fadeOut(GPIN,50);
 }
 
 void loop() {
@@ -140,5 +145,13 @@ void fadeOn(int LEDPIN, int LedBrightness) {
         fadeLed = .015*x*x; // Final value is [80=96]; [73=80], close to old version
         analogWrite(LEDPIN, fadeLed);
         delay(30);
+      }
+}
+void fadeOut(int LEDPIN, int LedBrightness) {
+      int fadeLed;
+      for (int x = LedBrightness; x > 0; x--) {
+        fadeLed = .015*x*x; 
+        analogWrite(LEDPIN, fadeLed);
+        delay(10);
       }
 }
