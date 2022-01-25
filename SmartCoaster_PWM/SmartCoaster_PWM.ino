@@ -1,19 +1,25 @@
-#define DEBUG_serial false		// serial print messages
 
-//DigiSpark Pins
-#define RPIN 0
-#define GPIN 1
-#define BPIN 4
-#define BUTTON 2
+#define Board_DigiSpark false
 
-//Arduino Mega Pins
-//#define RPIN 2
-//#define GPIN 3
-//#define BPIN 4
-//#define BUTTON 22
+#if Board_DigiSpark
+  //DigiSpark Pins
+  #define RPIN 0
+  #define GPIN 1
+  #define BPIN 4
+  #define BUTTON 2
+  #define DEBUG_serial false    // serial print messages
+#else
+  //Arduino Mega Pins
+  #define RPIN 2
+  #define GPIN 3
+  #define BPIN 4
+  #define BUTTON 22
+  #define DEBUG_serial true    // serial print messages
+#endif 
 
-
-#define ADJUSTMENT 55
+// delay(x) where x=1000=1second. 1000*60=60000=1minute. 60000/50(50=default_delay)=1200
+//actually, max delay is 32476. so lets divide by 2 for now and dowuble
+#define DELAY_MULTIPLIER 600
 
 int counter = 0;
 
@@ -25,14 +31,16 @@ int adjustmentValue = 0;
 int buttonValue = 0;
 bool buttonDown = false;
 
-int thresh_min=50;
-int thresh_mid=150;
-int thresh_max=200;
+#define thresh_min 25
+#define thresh_mid 40
+#define thresh_max 60
+#define thresh_max_hold 50
+#define LEDMAXBRIGHT 250
 
 void setup() {
 
   #if DEBUG_serial
-	Serial.begin(9600);
+	Serial.begin(115200);
   #endif // DEBUG
 
   
@@ -47,11 +55,14 @@ void setup() {
 void loop() {
 
   buttonValue = digitalRead(BUTTON);
-//  adjustmentValue = analogRead(ADJUSTMENT);
-//  int adjustmentRange = map(adjustmentValue, 0, 1024, 1, 25);
+  int maxconstrain = constrain(counter,0,60);
+  int adjustmentRange = map(maxconstrain, 0, 60, 1, 255);
 
 #if DEBUG_serial
-  Serial.print("ButtonValue: ");
+  Serial.print("adjustmentRange: ");
+  Serial.print(adjustmentRange);
+  
+  Serial.print(" ButtonValue: ");
   Serial.print(buttonValue);
   Serial.print(", Button: ");
   Serial.print(buttonDown);  
@@ -80,24 +91,28 @@ void loop() {
 
   evaluateColors();
   updateLights();
-  //delay(100* adjustmentRange);
-  delay(30);  //Serialprint creates a delay, so adjust delay if not using it. 
-
+  delay(50* DELAY_MULTIPLIER);  //Serialprint creates a delay, so adjust delay if not using it. 
+  delay(50* DELAY_MULTIPLIER);
 }
 
 
 void evaluateColors() {
-
-  if (buttonDown == true && counter >= thresh_min && counter <= thresh_mid) {
+//  if (buttonDown == true && counter == thresh_min) {
+//    fadeOn(BPIN, thresh_min);
+//  } else 
+  if (buttonDown == true && counter > thresh_min && counter <= thresh_mid) { //blue
+    int adjustmentRange = map(counter, thresh_min, thresh_mid, 0, LEDMAXBRIGHT);
     red = 0;
     green = 0;
-    blue = counter-thresh_min;
-  } else if (buttonDown == true && counter > thresh_mid && counter <= thresh_max) {
-    red = counter-thresh_mid;
+    blue = adjustmentRange;
+  } else if (buttonDown == true && counter > thresh_mid && counter <= thresh_max) { //blue to purple to red
+    int adjustmentRange_r = map(counter, thresh_mid, thresh_max, 1, LEDMAXBRIGHT);
+    int adjustmentRange_b = map(counter, thresh_mid, thresh_max, LEDMAXBRIGHT, 0);
+    red = adjustmentRange_r;
     green = 0;
-    blue = thresh_max-counter;
-  } else if (buttonDown == true && counter > thresh_max && counter <= thresh_max+50) {
-  } else if (buttonDown == true && counter > thresh_max+50) {
+    blue = adjustmentRange_b;
+  } else if (buttonDown == true && counter > thresh_max && counter <= thresh_max+thresh_max_hold) { //hold red for a bit
+  } else if (buttonDown == true && counter > thresh_max+thresh_max_hold) { //turn off leds
     red = 0;
     green = 0;
     blue = 0;
@@ -117,4 +132,13 @@ void updateLights() {
     analogWrite(GPIN, green);
     analogWrite(BPIN, blue);
 
+}
+
+void fadeOn(int LEDPIN, int LedBrightness) {
+      int fadeLed;
+      for (int x = 0; x < LedBrightness; x++) {
+        fadeLed = .015*x*x; // Final value is [80=96]; [73=80], close to old version
+        analogWrite(LEDPIN, fadeLed);
+        delay(30);
+      }
 }
