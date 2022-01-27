@@ -14,9 +14,17 @@ void EnableWatchdog() {
 void EnableWatchdog(const byte interval) {
   MCUSR = 0;
   // allow changes, disable reset
-  WDTCR = _BV(WDCE) | _BV(WDE);
+  #if Board_DigiSpark
+    WDTCR = _BV(WDCE) | _BV(WDE);
+  #else
+    WDTCSR = _BV(WDCE) | _BV(WDE);
+  #endif
   // set interrupt mode and an interval
-  WDTCR = _BV(WDIE) | interval;    // set WDIE, and requested delay
+  #if Board_DigiSpark
+    WDTCR = _BV(WDIE) | interval;    // set WDIE, and requested delay
+  #else
+    WDTCSR = _BV(WDIE) | interval;    // set WDIE, and requested delay
+  #endif
   wdt_reset();  // pat the dog
 }
 ISR(WDT_vect)
@@ -24,44 +32,33 @@ ISR(WDT_vect)
   wdt_disable();  // disable watchdog
 }
 
-void EnablePinChangeInt() {
-  sensorActive = false; 
+void EnablePinChangeInt(byte const ShiftBy) {
+//  sensorActive = false; 
   // Pin Change Interrupt setup
-  GIMSK = 0b00100000;    // turns on pin change interrupts
-  PCMSK = 0b00000001;    // turn on interrupts on pins PB0
+  GIMSK = 0b00100000;               // turns on pin change interrupts
+  PCMSK = 0b00000001 << ShiftBy;    // turn on interrupts on pins PB#
 }
 void DisablePinChangeInt() {
   // Pin Change Interrupt setup
   GIMSK = 0b00000000;    // turns off pin change interrupts
-  PCMSK = 0b00000000;    // turn off interrupts on pins PB0
+  PCMSK = 0b00000000;    // turn off interrupts on pins PB#
 }
-/*
-void EnablePin2ChangeInt() {
-  sensorActive = false; 
-  // Pin Change Interrupt setup
-  GIMSK = 0b00100000;    // turns on pin change interrupts
-  PCMSK = 0b00000100;    // turn on interrupts on pins PB0
-}
-void DisablePin2ChangeInt() {
-  // Pin Change Interrupt setup
-  GIMSK = 0b00000000;    // turns off pin change interrupts
-  PCMSK = 0b00000000;    // turn off interrupts on pins PB0
-}
-*/
+
+
 ISR(PCINT0_vect)
 {
     //sensorActive = true;             // Increment volatile variable
 }
 
-  // Flag to indicate that the sensors have been triggered, 
-  // so that it will run the cod. Because I am using interrupts, i had to
-  // structure the code so that the function is available but will only run when triggered.
-  // If i tried to turn on the leds via the interrupt function, the chip would go back to 
-  // sleep because its running the previous code from where it left off, and sleep before the led function finishes.
 
-// Use:   attachInterrupt(LightSensorInt, wakeLight, LOW); // HW INT0
-void WakeLight() {
-  detachInterrupt(LightSensorInt);
+//
+// Well apparently attchInterrupt() & detachInterrupt() work for arduino & trinket, but not the digispark. So need to use PCINT, which is fine for my use.
+// Maybe those functions can be replaced with more hardware specific code.
+//
+// Use:   attachInterrupt(LightSensorInt, WakeUp, LOW); // HW INT0
+void WakeUp() {
+  //maybe leave this empty here so i dont need to change the pin variable in future projects, and just use this line directly in the code where is resumed.
+  //detachInterrupt(digitalPinToInterrupt(BUTTON_PIN));
 }
 
 void GoToSleep() {
@@ -87,7 +84,9 @@ void GoToSleep(const byte mode) {
   noInterrupts();
   sleep_enable();
   set_sleep_mode (mode);
+  #ifndef Board_DigiSpark 
   sleep_bod_disable();
+  #endif
   interrupts();
   sleep_mode();
   // --- end timed sleep sequence (order of events matter) --- //

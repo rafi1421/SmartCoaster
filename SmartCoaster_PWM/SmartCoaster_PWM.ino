@@ -6,20 +6,22 @@
   #define RPIN 0
   #define GPIN 1
   #define BPIN 4
-  #define BUTTON 2
+  #define BUTTON_PIN 2
+  byte BUTTON_INT = 2;  // however arduino reference says now to use -> digitalPinToInterrupt(BUTTON_PIN). However this function doesnt exist on digispark?
   #define DEBUG_serial false    // serial print messages
 #else
   //Arduino Mega Pins
   #define RPIN 2
   #define GPIN 3
   #define BPIN 4
-  #define BUTTON 22
+  #define BUTTON_PIN 21
+  byte BUTTON_INT = 2; // however arduino reference says now to use -> digitalPinToInterrupt(BUTTON_PIN).
   #define DEBUG_serial true    // serial print messages
 #endif 
 
 // delay(x) where x=1000=1second. 1000*60=60000=1minute. 60000/50(50=default_delay)=1200
 //actually, max delay is 32476. so lets divide by 2 for now and dowuble
-#define DELAY_MULTIPLIER 600
+#define DELAY_MULTIPLIER 1
 
 int counter = 0;
 
@@ -59,6 +61,8 @@ void setup() {
 
   #if DEBUG_serial
 	Serial.begin(115200);
+  //Serial.print(" BUTTON_PIN to Intterupt: ");
+  //Serial.println(digitalPinToInterrupt(BUTTON_PIN));
   #endif // DEBUG
 
   
@@ -66,7 +70,7 @@ void setup() {
   pinMode(GPIN, OUTPUT);
   pinMode(BPIN, OUTPUT);
 
-  pinMode(BUTTON, INPUT_PULLUP);
+  pinMode(BUTTON_PIN, INPUT_PULLUP);
 
   // PowerOn glow for fun
   fadeOn(BPIN,50);
@@ -77,17 +81,17 @@ void setup() {
 
 void loop() {
 
-  buttonValue = digitalRead(BUTTON);
-  int maxconstrain = constrain(counter,0,60);
-  int adjustmentRange = map(maxconstrain, 0, 60, 1, 255);
+  buttonValue = digitalRead(BUTTON_PIN);
+//  int maxconstrain = constrain(counter,0,60);
+//  int adjustmentRange = map(maxconstrain, 0, 60, 1, 255);
 
 #if DEBUG_serial
-  Serial.print("adjustmentRange: ");
-  Serial.print(adjustmentRange);
+//  Serial.print("adjustmentRange: ");
+//  Serial.print(adjustmentRange);
   
   Serial.print(" ButtonValue: ");
   Serial.print(buttonValue);
-  Serial.print(", Button: ");
+  Serial.print(", ButtonDown: ");
   Serial.print(buttonDown);  
   Serial.print(", Counter: ");
   Serial.print(counter);
@@ -103,19 +107,53 @@ void loop() {
     counter = 0;
     buttonDown = true;
     counter++;
+    #if DEBUG_serial
+    Serial.println("+++ Button Pressed. Starting Watchdog +++ ");
+    delay(100);
+    #endif
+    EnableWatchdog(WDT_128_MS);
+    GoToSleep(SLEEP_MODE_IDLE);
+    #if DEBUG_serial
+    Serial.println("--- Watchdog woke up --- ");
+    delay(100);
+    #endif
   } else if (buttonValue == LOW && buttonDown == true) {
     counter ++;
+    #if DEBUG_serial
+    Serial.println("--- Button Still Pressed. Watchdog keeping guard --- ");
+    delay(100);
+    #endif
+    EnableWatchdog(WDT_128_MS);
+    GoToSleep(SLEEP_MODE_IDLE);
   } else if (buttonValue == HIGH && buttonDown == true) {
     counter = 0;
     buttonDown = false;
+    #if DEBUG_serial
+    Serial.println("+++ Button Raised. Clearing counter +++ ");
+    delay(100);
+    #endif
   } else if (buttonValue == HIGH && buttonDown == false) {
     counter++;
+    #if DEBUG_serial
+    Serial.println("--- Button Not Pressed. Going into pwd_down --- ");
+    delay(100);
+    #endif
+    // Enable ISR and Sleep
+    //attachInterrupt(BUTTON_INT, WakeUp, CHANGE); //digispark doesnt support this method
+    EnablePinChangeInt(BUTTON_INT);
+    GoToSleep();
+    DisablePinChangeInt();
+    //detachInterrupt(BUTTON_INT);  //digispark doesnt support this method
+    #if DEBUG_serial
+    Serial.println("--- Button Pressed Down -> Woke up from pwd_down --- ");
+    delay(100);
+    #endif
   }
 
   evaluateColors();
   updateLights();
-  delay(50* DELAY_MULTIPLIER);  //Serialprint creates a delay, so adjust delay if not using it. 
-  delay(50* DELAY_MULTIPLIER);
+//  delay(50* DELAY_MULTIPLIER);  //Serialprint creates a delay, so adjust delay if not using it. 
+//  delay(50* DELAY_MULTIPLIER);
 }
 
 
