@@ -32,6 +32,7 @@ ISR(WDT_vect)
   wdt_disable();  // disable watchdog
 }
 
+#if Board_DigiSpark
 void EnablePinChangeInt(byte const ShiftBy) {
 //  sensorActive = false; 
   // Pin Change Interrupt setup
@@ -43,11 +44,11 @@ void DisablePinChangeInt() {
   GIMSK = 0b00000000;    // turns off pin change interrupts
   PCMSK = 0b00000000;    // turn off interrupts on pins PB#
 }
-
+#endif
 
 ISR(PCINT0_vect)
 {
-    //sensorActive = true;             // Increment volatile variable
+    //skipNap = true;             // Increment volatile variable
 }
 
 
@@ -57,13 +58,14 @@ ISR(PCINT0_vect)
 //
 // Use:   attachInterrupt(LightSensorInt, WakeUp, LOW); // HW INT0
 void WakeUp() {
+  skipNap = true;
   //maybe leave this empty here so i dont need to change the pin variable in future projects, and just use this line directly in the code where is resumed.
   //detachInterrupt(digitalPinToInterrupt(BUTTON_PIN));
 }
 
-void GoToSleep() {
-  GoToSleep(SLEEP_MODE_PWR_DOWN);
-}
+//void GoToSleep() {
+//  GoToSleep(SLEEP_MODE_PWR_DOWN);
+//}
 void GoToSleep(const byte mode) {
   // disable ADC
   byte old_ADCSRA = ADCSRA;
@@ -77,7 +79,9 @@ void GoToSleep(const byte mode) {
     // These keep PWM while IDLE sleeping
     // Reduces power from 5.7mA to 3.4mA (led at 23% pwm)
     power_adc_disable();
-    power_timer0_disable();
+    #ifndef Board_DigiSpark
+    power_timer0_disable(); // WELL APARENTLY this is what was screwing up causing the led's to flicker on the digispark! but it wouldnt flicker on the arduino! Strange! Probably uses different timers or modes or something like that.
+    #endif
   }
   
   // --- start timed sleep sequence (order of events matter) --- //
