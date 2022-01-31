@@ -1,11 +1,12 @@
+#include <avr/power.h> // Needed to enable/disable power modes
 
 #define Board_DigiSpark true
 
 #if Board_DigiSpark
   //DigiSpark Pins
   #define RPIN 0
-  #define GPIN 1
-  #define BPIN 4
+  #define GPIN 4
+  #define BPIN 1
   #define BUTTON_PIN 2
   byte BUTTON_INT = 2;  // however arduino reference says now to use -> digitalPinToInterrupt(BUTTON_PIN). However this function doesnt exist on digispark?
   #define DEBUG_serial false    // serial print messages
@@ -13,7 +14,7 @@
   //Arduino Mega Pins
   #define RPIN 5
   #define GPIN 6
-  #define BPIN 7 //previous pin 4 was flickering during sleep_mode_idle? moved to another pin, worked fine. some search might say they are using different timers.
+  #define BPIN 7
   #define BUTTON_PIN 21
   byte BUTTON_INT = 2; // however arduino reference says now to use -> digitalPinToInterrupt(BUTTON_PIN).
   #define DEBUG_serial true    // serial print messages
@@ -72,9 +73,12 @@ void setup() {
 
   // PowerOn glow for fun
   fadeOn(BPIN,50);
+  fadeOn(RPIN,50);
+  fadeOut(RPIN,50);
   fadeOn(GPIN,50);
   fadeOut(BPIN,50);
   fadeOut(GPIN,50);
+  power_adc_disable(); // wont need adc in a normal operation #include power.h
 }
 
 void loop() {
@@ -238,4 +242,5 @@ void fadeOut(int LEDPIN, int LedBrightness) {
       analogWrite(LEDPIN, fadeLed);
       delay(10);
     }
+    digitalWrite(LEDPIN, LOW); //turn off pwm bits
 }

@@ -48,7 +48,7 @@ void DisablePinChangeInt() {
 
 ISR(PCINT0_vect)
 {
-    //skipNap = true;             // Increment volatile variable
+    skipNap = true;             // Increment volatile variable
 }
 
 
@@ -76,12 +76,21 @@ void GoToSleep(const byte mode) {
     power_all_disable();
   }
   else {
-    // These keep PWM while IDLE sleeping
-    // Reduces power from 5.7mA to 3.4mA (led at 23% pwm)
     power_adc_disable();
-    #ifndef Board_DigiSpark
-    power_timer0_disable(); // WELL APARENTLY this is what was screwing up causing the led's to flicker on the digispark! but it wouldnt flicker on the arduino! Strange! Probably uses different timers or modes or something like that.
-    #endif
+    // These keep PWM while IDLE sleeping
+    #if Board_DigiSpark
+       // DigiSpark/Digistump appears to set or use this register(bit 2) for timer overflow ISR which was causing the CPU to immediately wake up from sleep while using PMW.
+      //  This turns off that bit and allows PWM to work while in SLEEP_MODE_IDLE
+      int v_TIMSK = TIMSK;
+      bitClear(v_TIMSK,2);
+      TIMSK =v_TIMSK;
+      
+      power_timer1_disable();
+      //power_timer0_disable(); // WELL APARENTLY this is what was screwing up causing the led's to flicker on the digispark! but it wouldnt flicker on the arduino! Strange! Probably uses different timers or modes or something like that.
+      //// im guessing pin 4 runs on timer 1 while pins 0 & 1 run on timer 0. in that case since im only using blue and red, i can swap the green pin with blue so i can disable clock 1 and keep clock 0 only without problem so i can at least save some power.
+      //// side note, that power draw warning on windows only happens when a timer is disabled? could it being off while trying to toggle the pin cause an internal short somewhere? interesting.
+      //// back to that flicker issue, ran a test only disabling timer 1 while keeping timer 0 alive, so R&B pwm can work but G wont, then after 30 seconds, i got the windows error, and now its flickering white, because in the code i have all 3 going. so its definetly got to do with the internals & registers that is different in the digispark compiler compared to trinket/arduino. Well at least in a plain pwm/sleep sketch, stillshows that windows error in this project.
+      #endif
   }
   
   // --- start timed sleep sequence (order of events matter) --- //
