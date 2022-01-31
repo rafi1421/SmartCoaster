@@ -26,6 +26,8 @@ int counter = 0;
 int red = 255;
 int green = 255;
 int blue = 255;
+int blue_old = 0;
+int red_old = 0;
 
 int adjustmentValue = 0;
 int buttonValue = 0;
@@ -36,7 +38,7 @@ bool skipNap = false;
 #define thresh_mid 40
 #define thresh_max 60
 #define thresh_max_hold 50
-#define LEDMAXBRIGHT 250
+#define LEDMAXBRIGHT 200
 
 
 //// Watchdog intervals
@@ -73,8 +75,6 @@ void setup() {
 
   // PowerOn glow for fun
   fadeOn(BPIN,50);
-  fadeOn(RPIN,50);
-  fadeOut(RPIN,50);
   fadeOn(GPIN,50);
   fadeOut(BPIN,50);
   fadeOut(GPIN,50);
@@ -122,8 +122,9 @@ void loop() {
     #else
       attachInterrupt(BUTTON_INT, WakeUp, CHANGE); //digispark doesnt support this method
     #endif
-    // Repeat 8 second watchdog + one 4 second to elapse a minute's length
-    for (int x = 0; x < 6; x++) {
+    // Repeat 8 second watchdog to elapse a minute's length. 
+    // Should be 7.5 times for a minute, but i think because of the reduced 1KHz clock, it runs a bit slower? So eight 8 second sleep cycles covers close to 58 seconds on my board.
+    for (int x = 0; x < 7; x++) {
       if (!skipNap) {
         EnableWatchdog(WDT_8_SEC);
         GoToSleep(SLEEP_MODE_IDLE);
@@ -134,16 +135,16 @@ void loop() {
           #endif
       }
     }
-    if (!skipNap) {
-      EnableWatchdog(WDT_4_SEC);
-      GoToSleep(SLEEP_MODE_IDLE);
-      #if DEBUG_serial
-        Serial.print(" // ");
-        Serial.print(counter);
-        Serial.println(" minutes elapsed // ");
-        delay(10);
-      #endif
-    }
+//    if (!skipNap) {
+//      EnableWatchdog(WDT_4_SEC);
+//      GoToSleep(SLEEP_MODE_IDLE);
+//      #if DEBUG_serial
+//        Serial.print(" // ");
+//        Serial.print(counter);
+//        Serial.println(" minutes elapsed // ");
+//        delay(10);
+//      #endif
+//    }
     #if Board_DigiSpark
       DisablePinChangeInt();
     #else
@@ -192,17 +193,16 @@ void loop() {
 
 
 void evaluateColors() {
-//  if (buttonDown == true && counter == thresh_min) {
-//    fadeOn(BPIN, thresh_min);
-//  } else 
   if (buttonDown == true && counter > thresh_min && counter <= thresh_mid) { //blue
     int adjustmentRange = map(counter, thresh_min, thresh_mid, 0, LEDMAXBRIGHT);
+    fader(BPIN, blue_old, adjustmentRange, 700);
     red = 0;
     green = 0;
     blue = adjustmentRange;
   } else if (buttonDown == true && counter > thresh_mid && counter <= thresh_max) { //blue to purple to red
     int adjustmentRange_r = map(counter, thresh_mid, thresh_max, 1, LEDMAXBRIGHT);
     int adjustmentRange_b = map(counter, thresh_mid, thresh_max, LEDMAXBRIGHT, 0);
+    fader(RPIN, red_old, adjustmentRange_r, 200);
     red = adjustmentRange_r;
     green = 0;
     blue = adjustmentRange_b;
@@ -225,6 +225,8 @@ void updateLights() {
     analogWrite(RPIN, red);
     analogWrite(GPIN, green);
     analogWrite(BPIN, blue);
+    blue_old = blue;
+    red_old = red;
 }
 
 void fadeOn(int LEDPIN, int LedBrightness) {
@@ -243,4 +245,10 @@ void fadeOut(int LEDPIN, int LedBrightness) {
       delay(10);
     }
     digitalWrite(LEDPIN, LOW); //turn off pwm bits
+}
+void fader(int LEDPIN, int LedLast, int LedTo, int incDelay) {
+    for (int x = LedLast; x < LedTo; x++) {
+      analogWrite(LEDPIN, x);
+      delay(incDelay);
+  }
 }
