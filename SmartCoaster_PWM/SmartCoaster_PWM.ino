@@ -1,6 +1,10 @@
 #include <avr/power.h> // Needed to enable/disable power modes
 
-#define Board_DigiSpark true
+#if defined(ARDUINO_AVR_MEGA2560) 
+  #define Board_DigiSpark false
+#else 
+  #define Board_DigiSpark true
+#endif
 
 #if Board_DigiSpark
   //DigiSpark Pins
@@ -70,14 +74,15 @@ void setup() {
   pinMode(RPIN, OUTPUT);
   pinMode(GPIN, OUTPUT);
   pinMode(BPIN, OUTPUT);
-
   pinMode(BUTTON_PIN, INPUT_PULLUP);
-
+  digitalWrite(GPIN,0);
+  
   // PowerOn glow for fun
   fadeOn(BPIN,50);
-  fadeOn(GPIN,50);
+  fadeOn(RPIN,50);
   fadeOut(BPIN,50);
-  fadeOut(GPIN,50);
+  fadeOut(RPIN,50);
+  
   power_adc_disable(); // wont need adc in a normal operation #include power.h
 }
 
@@ -223,7 +228,7 @@ void evaluateColors() {
 
 void updateLights() {
     analogWrite(RPIN, red);
-    analogWrite(GPIN, green);
+    //analogWrite(GPIN, green);
     analogWrite(BPIN, blue);
     blue_old = blue;
     red_old = red;
