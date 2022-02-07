@@ -1,6 +1,6 @@
 #include <avr/power.h> // Needed to enable/disable power modes
 
-#if defined(ARDUINO_AVR_MEGA2560) 
+#if defined(ARDUINO_AVR_MEGA2560)
   #define Board_DigiSpark false
 #else 
   #define Board_DigiSpark true
@@ -20,7 +20,7 @@
   #define GPIN 6
   #define BPIN 7
   #define BUTTON_PIN 21
-  byte BUTTON_INT = 2; // however arduino reference says now to use -> digitalPinToInterrupt(BUTTON_PIN).
+  byte BUTTON_INT = 0; // however arduino reference says now to use -> digitalPinToInterrupt(BUTTON_PIN).
   #define DEBUG_serial true    // serial print messages
 #endif 
 
@@ -113,6 +113,10 @@ void loop() {
       Serial.println("+++ Button Pressed. Starting Watchdog +++ ");
       delay(10);
     #endif
+    fader(BPIN, 0, 10, 40);
+    fader(BPIN, 10, 0, 40);
+    digitalWrite(BPIN,0);
+    delay(500);
   } 
   else if (buttonValue == LOW && buttonDown == true) {
     counter ++;
@@ -125,7 +129,7 @@ void loop() {
     #if Board_DigiSpark
       EnablePinChangeInt(BUTTON_INT);
     #else
-      attachInterrupt(BUTTON_INT, WakeUp, CHANGE); //digispark doesnt support this method
+      attachInterrupt(digitalPinToInterrupt(BUTTON_PIN), WakeUp, CHANGE); //digispark doesnt support this method
     #endif
     // Repeat 8 second watchdog to elapse a minute's length. 
     // Should be 7.5 times for a minute, but i think because of the reduced 1KHz clock, it runs a bit slower? So eight 8 second sleep cycles covers close to 58 seconds on my board.
@@ -153,7 +157,7 @@ void loop() {
     #if Board_DigiSpark
       DisablePinChangeInt();
     #else
-      detachInterrupt(BUTTON_INT);  //digispark doesnt support this method
+      detachInterrupt(digitalPinToInterrupt(BUTTON_PIN));  //digispark doesnt support this method
     #endif
     
   }
@@ -176,13 +180,13 @@ void loop() {
     #if Board_DigiSpark
       EnablePinChangeInt(BUTTON_INT);
     #else
-      attachInterrupt(BUTTON_INT, WakeUp, CHANGE); //digispark doesnt support this method
+      attachInterrupt(digitalPinToInterrupt(BUTTON_PIN), WakeUp, CHANGE); //digispark doesnt support this method
     #endif    
     GoToSleep(SLEEP_MODE_PWR_DOWN);
     #if Board_DigiSpark
       DisablePinChangeInt();
     #else
-      detachInterrupt(BUTTON_INT);  //digispark doesnt support this method
+      detachInterrupt(digitalPinToInterrupt(BUTTON_PIN));  //digispark doesnt support this method
     #endif
     
     #if DEBUG_serial
@@ -200,14 +204,14 @@ void loop() {
 void evaluateColors() {
   if (buttonDown == true && counter > thresh_min && counter <= thresh_mid) { //blue
     int adjustmentRange = map(counter, thresh_min, thresh_mid, 0, LEDMAXBRIGHT);
-    fader(BPIN, blue_old, adjustmentRange, 700);
+    fader(BPIN, blue_old, adjustmentRange, 70);
     red = 0;
     green = 0;
     blue = adjustmentRange;
   } else if (buttonDown == true && counter > thresh_mid && counter <= thresh_max) { //blue to purple to red
     int adjustmentRange_r = map(counter, thresh_mid, thresh_max, 1, LEDMAXBRIGHT);
     int adjustmentRange_b = map(counter, thresh_mid, thresh_max, LEDMAXBRIGHT, 0);
-    fader(RPIN, red_old, adjustmentRange_r, 200);
+    fader(RPIN, red_old, adjustmentRange_r, 20);
     red = adjustmentRange_r;
     green = 0;
     blue = adjustmentRange_b;
@@ -251,9 +255,16 @@ void fadeOut(int LEDPIN, int LedBrightness) {
     }
     digitalWrite(LEDPIN, LOW); //turn off pwm bits
 }
-void fader(int LEDPIN, int LedLast, int LedTo, int incDelay) {
-    for (int x = LedLast; x < LedTo; x++) {
+void fader(int LEDPIN, int LedFrom, int LedTo, int incDelay) {
+  if (LedTo > LedFrom) {
+    for (int x = LedFrom; x < LedTo; x++) {
       analogWrite(LEDPIN, x);
       delay(incDelay);
+    }
+  } else {
+    for (int x = LedFrom; x > LedTo; x--) {
+      analogWrite(LEDPIN, x);
+      delay(incDelay);
+    }
   }
 }

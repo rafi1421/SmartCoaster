@@ -67,6 +67,9 @@ void WakeUp() {
 //  GoToSleep(SLEEP_MODE_PWR_DOWN);
 //}
 void GoToSleep(const byte mode) {
+  #if Board_DigiSpark
+    int v_TIMSK_bkup = TIMSK;
+  #endif
   // disable ADC
   byte old_ADCSRA = ADCSRA;
   ADCSRA = 0;
@@ -108,4 +111,7 @@ void GoToSleep(const byte mode) {
   //noInterrupts(); //Whoa, so actually having this here is what was causing the problem "reseting" during/after sleep!
   power_all_enable();
   ADCSRA = old_ADCSRA;  //return ACD enabled
+  #if Board_DigiSpark
+    TIMSK = v_TIMSK_bkup;
+  #endif
 }
